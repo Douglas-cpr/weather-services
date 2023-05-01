@@ -8,7 +8,7 @@ using Microsoft.Extensions.Options;
 namespace CloudWeather.Report.BusinessLogic;
 
 public interface IWeatherReportAggregator { 
-  public Task<WeatherReport> BuildWeeklyReport(string zip, int days);
+  public Task<WeatherReport> BuildReport(string zip, int days);
 }
 
 public class WeatherReportAggregator : IWeatherReportAggregator
@@ -31,7 +31,7 @@ public class WeatherReportAggregator : IWeatherReportAggregator
     _db = db;
   }
 
-  public async Task<WeatherReport> BuildWeeklyReport(string zip, int days)
+  public async Task<WeatherReport> BuildReport(string zip, int days)
   {
     var httpClient = _http.CreateClient();
     var precipData = await FetchPrecipitationData(httpClient, zip, days);
@@ -45,6 +45,28 @@ public class WeatherReportAggregator : IWeatherReportAggregator
     );
 
     var tempData = await FetchTemperatureData(httpClient, zip, days);
+    var averageHighTemp = tempData.Average(t => t.TempHighF); 
+    var averageLowTemp = tempData.Average(t => t.TempLowF);
+
+    _logger.LogInformation(
+      $"zip: {zip} over last {days} days: " +
+      $"lo temp: {totalSnow}, hi temp: {totalRain}" 
+    );
+
+    var weatherReport = new WeatherReport {
+      AverageHighF = Math.Round(averageHighTemp, 1),
+      AverageLowF = Math.Round(averageLowTemp, 1),
+      RainfallTotalInches = totalRain,
+      SnowTotalInches = totalSnow,
+      ZipCode = zip,
+      CreatedOn = DateTime.UtcNow
+    };
+
+
+    // TODO: Use 'cached' weather reports instaed of making round trips when possible?
+    await _db.AddAsync(weatherReport);
+    await _db.SaveChangesAsync();
+    return weatherReport;
   }
 
   private async Task<List<TemperatureModel>> FetchTemperatureData(HttpClient httpClient, string zip, int days)
