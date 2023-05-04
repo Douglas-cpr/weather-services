@@ -8,8 +8,7 @@ IConfiguration config = new ConfigurationBuilder()
   .Build();
 
 
-var servicesConfig = config.GetSection("Sevices");
-
+var servicesConfig = config.GetSection("Services");
 
 var tempServiceConfig = servicesConfig.GetSection("Temperature");
 var tempServiceHost = tempServiceConfig["Host"];
